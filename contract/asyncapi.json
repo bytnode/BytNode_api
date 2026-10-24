@@ -1,0 +1,793 @@
+{
+ "asyncapi": "3.0.0",
+ "info": {
+  "title": "BytNode WebSocket stream",
+  "version": "3.0.0",
+  "description": "Real-time trades, liquidations and consolidated order books, aggregated across venues. The same field names as the REST API (https://api.bytnode.com/openapi.json). Authentication happens at the handshake: a missing, invalid or already used credential gets HTTP 401 (`missing_api_key`, `invalid_api_key`) and a plan without the stream HTTP 403 (`plan_websocket`), before the connection opens. In a web page, open it with a short-lived token (`?token=`, from `POST https://api.bytnode.com/v1/ws/token`, 60 s, one connection) so that your API key never reaches the browser. Close codes: 4003 your plan's limit of simultaneous connections, 4005 client too slow (its queue overflowed ten times in a row), 4008 more than 20 messages per second, 4010 session expired after 6 hours (reconnect: rights are checked again), 1011 keepalive ping timeout (the server pings every 20 s and closes if no pong arrives within 20 s; WebSocket libraries answer automatically). The 100 ms tick is a ceiling, not a guarantee: under load frames are spaced further apart and gaps above one second happen, so never treat a silence under a few seconds as a stall. No replay: after a reconnection, read the trades you missed over REST (`/v1/trades/spot`, `/v1/trades/futures`, with `since_ms`) on a plan with trades."
+ },
+ "defaultContentType": "application/json",
+ "servers": {
+  "production": {
+   "host": "ws.bytnode.com",
+   "pathname": "/ws",
+   "protocol": "wss",
+   "description": "Also served at wss://api.bytnode.com/ws.",
+   "security": [
+    {
+     "$ref": "#/components/securitySchemes/tokenQuery"
+    },
+    {
+     "$ref": "#/components/securitySchemes/apiKeyQuery"
+    },
+    {
+     "$ref": "#/components/securitySchemes/apiKeyHeader"
+    },
+    {
+     "$ref": "#/components/securitySchemes/bearerHeader"
+    }
+   ]
+  }
+ },
+ "channels": {
+  "tradesFutures": {
+   "address": "trades.futures.{symbol}",
+   "description": "Individual futures trades, on a 100 ms tick.",
+   "parameters": {
+    "symbol": {
+     "description": "The pair, e.g. `BTCUSDT` (the 77 pairs of `GET /v1/symbols`). A stablecoin (`USDCUSDT`, `USDTUSDC`) has the spot channels only.",
+     "examples": [
+      "BTCUSDT",
+      "ETHUSDT"
+     ]
+    }
+   },
+   "messages": {
+    "tradesFrame": {
+     "$ref": "#/components/messages/tradesFrame"
+    }
+   }
+  },
+  "tradesSpot": {
+   "address": "trades.spot.{symbol}",
+   "description": "Individual spot trades, on a 100 ms tick.",
+   "parameters": {
+    "symbol": {
+     "description": "The pair, e.g. `BTCUSDT` (the 77 pairs of `GET /v1/symbols`). A stablecoin (`USDCUSDT`, `USDTUSDC`) has the spot channels only.",
+     "examples": [
+      "BTCUSDT",
+      "ETHUSDT"
+     ]
+    }
+   },
+   "messages": {
+    "tradesFrame": {
+     "$ref": "#/components/messages/tradesFrame"
+    }
+   }
+  },
+  "liquidations": {
+   "address": "liquidations.{symbol}",
+   "description": "Futures liquidations, pushed as the venues report them. Old events that a venue publishes again more than 60 s after their `time` are not relayed live (`/v1/liquidations/events` keeps every event); an event can still arrive a few seconds late, so filter and window on `time`, never on arrival.",
+   "parameters": {
+    "symbol": {
+     "description": "The pair, e.g. `BTCUSDT` (the 77 pairs of `GET /v1/symbols`). A stablecoin (`USDCUSDT`, `USDTUSDC`) has the spot channels only.",
+     "examples": [
+      "BTCUSDT",
+      "ETHUSDT"
+     ]
+    }
+   },
+   "messages": {
+    "liquidationsFrame": {
+     "$ref": "#/components/messages/liquidationsFrame"
+    }
+   }
+  },
+  "orderbookSpot": {
+   "address": "orderbook.spot.{symbol}",
+   "description": "Consolidated spot order book, on a 100 ms tick (at most 10 per second).",
+   "parameters": {
+    "symbol": {
+     "description": "The pair, e.g. `BTCUSDT` (the 77 pairs of `GET /v1/symbols`). A stablecoin (`USDCUSDT`, `USDTUSDC`) has the spot channels only.",
+     "examples": [
+      "BTCUSDT",
+      "ETHUSDT"
+     ]
+    }
+   },
+   "messages": {
+    "orderbookFrame": {
+     "$ref": "#/components/messages/orderbookFrame"
+    }
+   }
+  },
+  "orderbookFutures": {
+   "address": "orderbook.futures.{symbol}",
+   "description": "Consolidated futures order book, on a 100 ms tick (at most 10 per second).",
+   "parameters": {
+    "symbol": {
+     "description": "The pair, e.g. `BTCUSDT` (the 77 pairs of `GET /v1/symbols`). A stablecoin (`USDCUSDT`, `USDTUSDC`) has the spot channels only.",
+     "examples": [
+      "BTCUSDT",
+      "ETHUSDT"
+     ]
+    }
+   },
+   "messages": {
+    "orderbookFrame": {
+     "$ref": "#/components/messages/orderbookFrame"
+    }
+   }
+  },
+  "control": {
+   "address": "/ws",
+   "description": "Control messages exchanged on the connection.",
+   "messages": {
+    "subscribe": {
+     "$ref": "#/components/messages/subscribe"
+    },
+    "unsubscribe": {
+     "$ref": "#/components/messages/unsubscribe"
+    },
+    "ping": {
+     "$ref": "#/components/messages/ping"
+    },
+    "auth": {
+     "$ref": "#/components/messages/auth"
+    },
+    "subscribed": {
+     "$ref": "#/components/messages/subscribed"
+    },
+    "unsubscribed": {
+     "$ref": "#/components/messages/unsubscribed"
+    },
+    "pong": {
+     "$ref": "#/components/messages/pong"
+    },
+    "authenticated": {
+     "$ref": "#/components/messages/authenticated"
+    },
+    "error": {
+     "$ref": "#/components/messages/error"
+    },
+    "batch": {
+     "$ref": "#/components/messages/batch"
+    }
+   }
+  }
+ },
+ "operations": {
+  "receiveTradesFutures": {
+   "action": "receive",
+   "channel": {
+    "$ref": "#/channels/tradesFutures"
+   }
+  },
+  "receiveTradesSpot": {
+   "action": "receive",
+   "channel": {
+    "$ref": "#/channels/tradesSpot"
+   }
+  },
+  "receiveLiquidations": {
+   "action": "receive",
+   "channel": {
+    "$ref": "#/channels/liquidations"
+   }
+  },
+  "receiveOrderbookSpot": {
+   "action": "receive",
+   "channel": {
+    "$ref": "#/channels/orderbookSpot"
+   }
+  },
+  "receiveOrderbookFutures": {
+   "action": "receive",
+   "channel": {
+    "$ref": "#/channels/orderbookFutures"
+   }
+  },
+  "sendControl": {
+   "action": "send",
+   "channel": {
+    "$ref": "#/channels/control"
+   },
+   "messages": [
+    {
+     "$ref": "#/channels/control/messages/subscribe"
+    },
+    {
+     "$ref": "#/channels/control/messages/unsubscribe"
+    },
+    {
+     "$ref": "#/channels/control/messages/ping"
+    },
+    {
+     "$ref": "#/channels/control/messages/auth"
+    }
+   ]
+  },
+  "receiveControl": {
+   "action": "receive",
+   "channel": {
+    "$ref": "#/channels/control"
+   },
+   "messages": [
+    {
+     "$ref": "#/channels/control/messages/subscribed"
+    },
+    {
+     "$ref": "#/channels/control/messages/unsubscribed"
+    },
+    {
+     "$ref": "#/channels/control/messages/pong"
+    },
+    {
+     "$ref": "#/channels/control/messages/authenticated"
+    },
+    {
+     "$ref": "#/channels/control/messages/error"
+    },
+    {
+     "$ref": "#/channels/control/messages/batch"
+    }
+   ]
+  }
+ },
+ "components": {
+  "messages": {
+   "tradesFrame": {
+    "name": "trades",
+    "title": "trades",
+    "summary": "The trades received since the previous frame, oldest first. Order is guaranteed WITHIN a frame only: a later frame can carry a trade older than the newest one already received (a venue reporting late, usually by less than a second, at times up to about 1.5 s). Build candles on `time` and close a period about 2 s after its end.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "channel",
+      "server_time",
+      "data",
+      "seq"
+     ],
+     "properties": {
+      "channel": {
+       "type": "string",
+       "description": "The channel of the frame, e.g. `trades.futures.BTCUSDT`, `liquidations.ETHUSDT`, `orderbook.spot.BTCUSDT`."
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant of the server tick that built the frame (ISO 8601 UTC, milliseconds). The initial order book state carries the tick it was taken at, so it can be earlier than the `subscribed` that precedes it."
+      },
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "time",
+         "id",
+         "side",
+         "price",
+         "quantity",
+         "value_usd"
+        ],
+        "properties": {
+         "time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Execution instant stated by the venue."
+         },
+         "id": {
+          "type": "string",
+          "description": "Opaque trade id (16 hex characters): the SAME id as the row of `/v1/trades/spot` or `/v1/trades/futures`, so a gap can be filled over REST without duplicates."
+         },
+         "side": {
+          "type": "string",
+          "enum": [
+           "buy",
+           "sell"
+          ],
+          "description": "Taker side."
+         },
+         "price": {
+          "type": "number",
+          "description": "Price, in the quote currency."
+         },
+         "quantity": {
+          "type": "number",
+          "description": "Quantity, in the base asset."
+         },
+         "value_usd": {
+          "type": "number",
+          "description": "price × quantity, USD."
+         }
+        }
+       }
+      },
+      "seq": {
+       "type": "integer",
+       "description": "Sequence number of the CHANNEL, the same for every client. It increases by one per frame; a jump means frames were dropped for you (a slow reader). The initial value is arbitrary and restarts on a service restart: compare consecutive values only."
+      }
+     }
+    }
+   },
+   "liquidationsFrame": {
+    "name": "liquidations",
+    "title": "liquidations",
+    "summary": "The liquidations received since the previous frame, oldest first.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "channel",
+      "server_time",
+      "data",
+      "seq"
+     ],
+     "properties": {
+      "channel": {
+       "type": "string",
+       "description": "The channel of the frame, e.g. `trades.futures.BTCUSDT`, `liquidations.ETHUSDT`, `orderbook.spot.BTCUSDT`."
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant of the server tick that built the frame (ISO 8601 UTC, milliseconds). The initial order book state carries the tick it was taken at, so it can be earlier than the `subscribed` that precedes it."
+      },
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "time",
+         "price",
+         "quantity",
+         "side",
+         "value_usd"
+        ],
+        "properties": {
+         "time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Instant of the liquidation stated by the venue."
+         },
+         "price": {
+          "type": "number",
+          "description": "Price, in the quote currency."
+         },
+         "quantity": {
+          "type": "number",
+          "description": "Quantity, in the base asset."
+         },
+         "side": {
+          "type": "string",
+          "enum": [
+           "long",
+           "short"
+          ],
+          "description": "`long` = a long position was liquidated (forced sell); `short` = forced buy."
+         },
+         "value_usd": {
+          "type": "number",
+          "description": "Notional, USD."
+         }
+        }
+       }
+      },
+      "seq": {
+       "type": "integer",
+       "description": "Sequence number of the CHANNEL, the same for every client. It increases by one per frame; a jump means frames were dropped for you (a slow reader). The initial value is arbitrary and restarts on a service restart: compare consecutive values only."
+      }
+     }
+    }
+   },
+   "orderbookFrame": {
+    "name": "orderbook",
+    "title": "orderbook",
+    "summary": "The consolidated order book.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "channel",
+      "server_time",
+      "data",
+      "seq"
+     ],
+     "properties": {
+      "channel": {
+       "type": "string",
+       "description": "The channel of the frame, e.g. `trades.futures.BTCUSDT`, `liquidations.ETHUSDT`, `orderbook.spot.BTCUSDT`."
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant of the server tick that built the frame (ISO 8601 UTC, milliseconds). The initial order book state carries the tick it was taken at, so it can be earlier than the `subscribed` that precedes it."
+      },
+      "data": {
+       "type": "object",
+       "required": [
+        "bids",
+        "asks",
+        "avg_mid_price",
+        "avg_spread_bps"
+       ],
+       "properties": {
+        "bids": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "`[price, quantity]`: the price in the quote currency, then the quantity in the base asset."
+         },
+         "description": "Bids, best first (`depth` levels)."
+        },
+        "asks": {
+         "type": "array",
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "`[price, quantity]`: the price in the quote currency, then the quantity in the base asset."
+         },
+         "description": "Asks, best first (`depth` levels)."
+        },
+        "avg_mid_price": {
+         "type": [
+          "number",
+          "null"
+         ],
+         "description": "Average of the venues' mid prices; the consolidated depth is centred on it."
+        },
+        "avg_spread_bps": {
+         "type": [
+          "number",
+          "null"
+         ],
+         "description": "Average of the venues' own spreads, in basis points."
+        }
+       },
+       "description": "Consolidated depth of the venues, re-centred on `avg_mid_price` (never crossed). Each frame REPLACES the previous one (a state, not a delta)."
+      },
+      "seq": {
+       "type": "integer",
+       "description": "Sequence number of the CHANNEL, the same for every client. It increases by one per frame; a jump means frames were dropped for you (a slow reader). The initial value is arbitrary and restarts on a service restart: compare consecutive values only."
+      }
+     }
+    }
+   },
+   "batch": {
+    "name": "batch",
+    "title": "batch",
+    "summary": "With `mode: batch`: every pending frame in ONE message (fewer messages, same content).",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "frames"
+     ],
+     "properties": {
+      "op": {
+       "type": "string",
+       "const": "batch"
+      },
+      "frames": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "description": "A trades, liquidations or orderbook frame."
+       }
+      }
+     }
+    }
+   },
+   "subscribe": {
+    "name": "subscribe",
+    "title": "subscribe",
+    "summary": "Subscribe to channels (all or nothing: one invalid channel refuses the message).",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "channels"
+     ],
+     "properties": {
+      "op": {
+       "const": "subscribe"
+      },
+      "channels": {
+       "type": "array",
+       "minItems": 1,
+       "items": {
+        "type": "string"
+       },
+       "description": "Channels: `trades.futures.<SYMBOL>`, `trades.spot.<SYMBOL>`, `liquidations.<SYMBOL>`, `orderbook.spot.<SYMBOL>`, `orderbook.futures.<SYMBOL>` (case-insensitive)."
+      },
+      "depth": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 5,
+       "description": "Order book levels per side (default 5)."
+      },
+      "mode": {
+       "type": "string",
+       "enum": [
+        "frame",
+        "batch"
+       ],
+       "description": "`frame` (one message per frame, default) or `batch` (every pending frame in one message)."
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "unsubscribe": {
+    "name": "unsubscribe",
+    "title": "unsubscribe",
+    "summary": "Stop channels.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "channels"
+     ],
+     "properties": {
+      "op": {
+       "const": "unsubscribe"
+      },
+      "channels": {
+       "type": "array",
+       "minItems": 1,
+       "items": {
+        "type": "string"
+       },
+       "description": "Channels: `trades.futures.<SYMBOL>`, `trades.spot.<SYMBOL>`, `liquidations.<SYMBOL>`, `orderbook.spot.<SYMBOL>`, `orderbook.futures.<SYMBOL>` (case-insensitive)."
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "ping": {
+    "name": "ping",
+    "title": "ping",
+    "summary": "Application ping (answered by `pong`).",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op"
+     ],
+     "properties": {
+      "op": {
+       "const": "ping"
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "auth": {
+    "name": "auth",
+    "title": "auth",
+    "summary": "Redundant: the credential is checked at the handshake (`?token=`, `?api_key=` or the `X-API-KEY` header), and a connection without one is refused with HTTP 401 before it opens. Still answered (`authenticated`) on an open session, for older clients.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "api_key"
+     ],
+     "properties": {
+      "op": {
+       "const": "auth"
+      },
+      "api_key": {
+       "type": "string"
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "subscribed": {
+    "name": "subscribed",
+    "title": "subscribed",
+    "summary": "Your channels after a `subscribe`.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "channels",
+      "server_time"
+     ],
+     "properties": {
+      "op": {
+       "const": "subscribed"
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant the frame was sent (ISO 8601 UTC, milliseconds)."
+      },
+      "channels": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "unsubscribed": {
+    "name": "unsubscribed",
+    "title": "unsubscribed",
+    "summary": "Your channels after an `unsubscribe`.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "channels",
+      "server_time"
+     ],
+     "properties": {
+      "op": {
+       "const": "unsubscribed"
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant the frame was sent (ISO 8601 UTC, milliseconds)."
+      },
+      "channels": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "pong": {
+    "name": "pong",
+    "title": "pong",
+    "summary": "Answer to `ping`.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "server_time"
+     ],
+     "properties": {
+      "op": {
+       "const": "pong"
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant the frame was sent (ISO 8601 UTC, milliseconds)."
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "authenticated": {
+    "name": "authenticated",
+    "title": "authenticated",
+    "summary": "Answer to `auth`.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "authenticated_by",
+      "server_time"
+     ],
+     "properties": {
+      "op": {
+       "const": "authenticated"
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant the frame was sent (ISO 8601 UTC, milliseconds)."
+      },
+      "authenticated_by": {
+       "type": "string",
+       "enum": [
+        "handshake",
+        "message"
+       ]
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "error": {
+    "name": "error",
+    "title": "error",
+    "summary": "A refused message: the `error` object of the REST API, unchanged.",
+    "contentType": "application/json",
+    "payload": {
+     "type": "object",
+     "required": [
+      "op",
+      "server_time",
+      "error"
+     ],
+     "properties": {
+      "op": {
+       "const": "error"
+      },
+      "server_time": {
+       "type": "string",
+       "format": "date-time",
+       "description": "Instant the frame was sent (ISO 8601 UTC, milliseconds)."
+      },
+      "error": {
+       "type": "object",
+       "required": [
+        "code",
+        "message"
+       ],
+       "properties": {
+        "code": {
+         "type": "string",
+         "description": "Stable code of the REST catalogue: `invalid_channel`, `invalid_symbol`, `not_applicable`, `plan_family`, `invalid_parameter`, `unknown_parameter`, `invalid_depth`, `depth_too_large`, `invalid_message`, `not_authenticated`, `invalid_api_key`."
+        },
+        "message": {
+         "type": "string",
+         "description": "What is wrong, in English."
+        },
+        "param": {
+         "type": "string",
+         "description": "The field of your message at fault."
+        },
+        "details": {
+         "type": "object",
+         "description": "`suggestion` (Did you mean) and `accepted` (the accepted values), when the message gives them."
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "securitySchemes": {
+   "tokenQuery": {
+    "type": "httpApiKey",
+    "name": "token",
+    "in": "query",
+    "description": "A short-lived token (`wst_…`) from `POST https://api.bytnode.com/v1/ws/token`, called by your server with its key: valid 60 seconds, for ONE connection, on the WebSocket only. The form for a web page (browsers cannot set headers on a WebSocket): the key itself never reaches the browser nor a URL."
+   },
+   "apiKeyQuery": {
+    "type": "httpApiKey",
+    "name": "api_key",
+    "in": "query",
+    "description": "Your API key in the URL. Accepted, but a URL ends up in browser history and proxy logs: in a web page, prefer `tokenQuery`; from a server, the `X-API-KEY` header."
+   },
+   "apiKeyHeader": {
+    "type": "httpApiKey",
+    "name": "X-API-KEY",
+    "in": "header"
+   },
+   "bearerHeader": {
+    "type": "http",
+    "scheme": "bearer",
+    "description": "The API key as `Authorization: Bearer <key>` on the handshake (contract 2.0.6), from a server; `X-API-KEY` wins when both are sent."
+   }
+  }
+ }
+}

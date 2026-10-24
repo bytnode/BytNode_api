@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bytnode-contract"
+version = "3.0.0"
+description = "The contract layer of the BytNode crypto market-data engine: envelope, error format, public vocabulary, strict parameters, plan-scoped history depth."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "LicenseRef-Proprietary" }
+authors = [{ name = "BytNode" }]
+keywords = ["api-design", "fastapi", "openapi", "market-data", "contract"]
+# ⚠️ PILE EPINGLEE, exactement comme en production. FastAPI a SUPPRIME
+# `get_flat_dependant`, dont `query_strict` a besoin pour lire les parametres
+# declares par une route ET par ses dependances : sur une version recente, le mode
+# strict leve une ImportError sur CHAQUE requete. Un `>=` aurait rendu ce depot
+# non installable le jour ou la version suivante sort.
+dependencies = [
+  "fastapi==0.135.1",
+  "starlette==1.7.0",
+  "pydantic==2.12.5",
+]
+
+[project.optional-dependencies]
+# `httpx2` : exige par le TestClient de Starlette.
+dev = ["pytest>=8", "ruff>=0.6", "httpx2>=0.1"]
+
+[project.urls]
+Homepage = "https://bytnode.com"
+Documentation = "https://bytnode.com/docs"
+Contract = "https://api.bytnode.com/openapi.json"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

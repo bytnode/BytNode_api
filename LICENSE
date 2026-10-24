@@ -1,0 +1,35 @@
+BytNode — Source-Available License
+Copyright (c) 2026 BytNode. All rights reserved.
+
+This repository is published to be READ. It is not open source, and no open-source
+licence applies to it.
+
+YOU MAY, without asking:
+
+  1. read, study and run this code for your own learning or evaluation;
+  2. quote short extracts — in a review, an article, a course, a technical discussion
+     or an interview — with attribution to BytNode and a link to
+     https://github.com/bytnode/bytnode_api;
+  3. fork this repository on GitHub, as GitHub's Terms of Service allow.
+
+YOU MAY NOT, without prior written permission from BytNode:
+
+  4. use this code, in whole or in part, in any product, service or codebase, whether
+     commercial or not, internal or public;
+  5. redistribute it, repackage it, or publish it under another name or licence;
+  6. train a machine-learning model on it, or include it in a dataset used for that
+     purpose;
+  7. remove or alter this notice.
+
+This code is an extract from a private production engine. The mapping tables it
+contains are deliberately partial, and it is not a complete or runnable API. It is
+provided "AS IS", without warranty of any kind, express or implied, including but not
+limited to the warranties of merchantability, fitness for a particular purpose and
+non-infringement. In no event shall the authors or copyright holders be liable for any
+claim, damages or other liability arising from, out of or in connection with this code
+or its use.
+
+The BytNode API itself is a commercial service, governed by its own terms:
+https://bytnode.com
+
+For any permission beyond the above, ask: https://bytnode.com
